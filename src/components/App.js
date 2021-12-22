@@ -1,12 +1,13 @@
 import React, { Component } from "react";
 import Web3 from "web3";
 import logo from "../logo.png";
+import Color from "../abis/Color.json";
 import "./App.css";
 
 class App extends Component {
   constructor(props) {
     super(props);
-    this.state = { account: '' };
+    this.state = { account: "", contract: null, totalSupply: 0, colors: [] };
   }
 
   async componentWillMount() {
@@ -32,6 +33,29 @@ class App extends Component {
     const accounts = await web3.eth.getAccounts();
     console.log("[accounts]", accounts);
     this.setState({ account: accounts[0] });
+
+    const networkId = await web3.eth.net.getId();
+    const networkData = Color.networks[networkId];
+    if (networkData) {
+      const abi = Color.abi;
+      const address = networkData.address;
+      const contract = new web3.eth.Contract(abi, address);
+      // console.log(colorContract);
+      this.setState({ contract });
+      const totalSupply = await contract.methods.totalSupply().call();console.log('[totalSupply]', totalSupply);
+      this.setState({ totalSupply });
+
+      // load Colors
+      for (var i = 0; i < totalSupply; i++) {
+        const color = await contract.methods.colors(i).call();
+        this.setState({
+          colors: [...this.state.colors, color],
+        });
+      }
+      console.log('[colors]', this.state.colors);
+    } else {
+      window.alert("Smart contract not deployed to detected network");
+    }
   }
 
   render() {
@@ -49,9 +73,7 @@ class App extends Component {
           <ul className="navbar-nav px-3">
             <li className="nav-item text-nowrap d-none d-sm-none d-sm-block">
               <small className="text-white">
-                <span id="account">
-                  {this.state.account}
-                </span>
+                <span id="account">{this.state.account}</span>
               </small>
             </li>
           </ul>
@@ -59,10 +81,18 @@ class App extends Component {
         <div className="container-fluid mt-5">
           <div className="row">
             <main role="main" className="col-lg-12 d-flex text-center">
-              <div className="content mr-auto ml-auto">
-
-              </div>
+              <div className="content mr-auto ml-auto"></div>
             </main>
+          </div>
+          <hr />
+
+          <div className="row text-center">
+            {this.state.colors.map((color, key) => {
+              return (<div className="col-3">
+                <div className="token" style={{backgroundColor: color }}></div>
+                <p key={key}>{color}</p>
+              </div>)              
+            })}
           </div>
         </div>
       </div>
